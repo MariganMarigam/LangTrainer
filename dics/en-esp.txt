@@ -1,0 +1,237 @@
+the, el / la / los / las
+of, de
+and, y
+to, a / para
+a, un / una
+in, en
+for, para / por
+is, es
+on, en / sobre
+that, ese / que
+by, por / cerca de
+this, este / esto
+with, con
+I, yo
+you, tú / usted
+it, ello / eso
+not, no
+or, o
+be, ser / estar
+are, son / están
+from, de / desde
+at, en
+as, como
+your, tu / su
+all, todo / todos
+have, tener
+new, nuevo
+more, más
+an, un / una
+was, era / estaba
+we, nosotros
+will, voluntad / futuro
+home, casa / hogar
+can, poder / lata
+us, nosotros
+about, sobre / acerca de
+if, si
+my, mi
+has, tiene
+search, buscar / búsqueda
+free, libre / gratis
+but, pero
+our, nuestro
+one, uno
+other, otro
+do, hacer
+no, no
+time, tiempo / hora
+they, ellos
+site, sitio
+he, él
+up, arriba
+may, mayo / poder
+what, qué
+which, cuál
+their, su / sus
+news, noticias
+out, fuera
+use, usar / uso
+any, cualquier
+there, allí / hay
+see, ver
+only, solo / solamente
+so, así / tan
+his, su
+when, cuando
+contact, contacto
+here, aquí
+business, negocios
+who, quién
+web, web / red
+also, también
+now, ahora
+help, ayudar / ayuda
+get, obtener
+pm, pm
+view, ver / vista
+online, en línea
+first, primero
+am, soy / estoy
+been, sido / estado
+would, condicional
+how, cómo
+were, eran / estaban
+me, me / mí
+services, servicios
+some, algunos
+these, estos
+click, clic / hacer clic
+its, su (de ello)
+like, gustar / como
+service, servicio
+than, que
+find, encontrar
+price, precio
+date, fecha / cita
+back, espalda / atrás
+top, cima / superior
+people, gente / personas
+had, tenía / hube
+list, lista
+name, nombre
+just, solo / justo
+over, sobre / más de
+state, estado
+year, año
+day, día
+into, dentro de
+email, correo electrónico
+two, dos
+health, salud
+world, mundo
+next, siguiente
+used, usado
+go, ir
+work, trabajo / trabajar
+last, último
+most, más
+products, productos
+music, música
+buy, comprar
+data, datos
+make, hacer
+them, ellos / les
+should, debería
+product, producto
+system, sistema
+post, publicar / correo
+her, su / ella
+city, ciudad
+add, añadir
+policy, política
+number, número
+such, tal
+please, por favor
+available, disponible
+copyright, derechos de autor
+support, soporte
+message, mensaje
+after, después
+best, mejor
+software, software
+then, entonces
+jan, enero
+good, bueno
+video, vídeo
+well, bien
+where, dónde
+info, info
+rights, derechos
+public, público
+books, libros
+high, alto
+school, escuela
+through, a través de
+each, cada
+links, enlaces
+she, ella
+review, reseña
+years, años
+order, orden / pedir
+very, muy
+privacy, privacidad
+book, libro
+items, artículos
+company, empresa
+read, leer
+group, grupo
+need, necesitar
+many, muchos
+user, usuario
+said, dijo
+does, hace
+set, conjunto / fijar
+under, bajo
+general, general
+research, investigación
+university, universidad
+mail, correo
+full, lleno / completo
+map, mapa
+reviews, reseñas
+program, programa
+life, vida
+know, saber / conocer
+games, juegos
+way, manera / camino
+days, días
+management, gestión
+part, parte
+could, podría
+great, genial / grande
+united, unido
+hotel, hotel
+real, real
+item, artículo
+international, internacional
+center, centro
+must, debe / deber
+store, tienda
+travel, viajar
+comments, comentarios
+made, hecho
+development, desarrollo
+report, informe
+off, apagado / fuera
+member, miembro
+details, detalles
+line, línea
+terms, términos
+before, antes
+hotels, hoteles
+did, hizo
+send, enviar
+right, derecho / correcto
+type, tipo
+because, porque
+local, local
+those, esos
+using, usando
+results, resultados
+office, oficina
+education, educación
+national, nacional
+car, coche / carro
+design, diseño
+take, tomar
+posted, publicado
+internet, internet
+address, dirección
+community, comunidad
+within, dentro de
+states, estados
+area, área
+want, querer
+phone, teléfono
+shipping, envío

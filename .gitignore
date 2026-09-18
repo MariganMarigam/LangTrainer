@@ -1,0 +1,50 @@
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
+
+# ── Virtual environment ──────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── PyInstaller ──────────────────────────────────────────
+*.spec
+*.manifest
+
+# ── Tests / coverage ─────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ── Runtime data (user DB — auto-created on first run) ───
+data/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# ── Project-local (not for public repo) ──────────────────
+AGENTS.md
+docs/
+output/
+.opencode/
+
+# ── OS / editor ──────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+.idea/
+.vscode/
+*.swp
+*.swo

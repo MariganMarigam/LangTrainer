@@ -1,0 +1,237 @@
+the, (артикль)
+of, из / о
+and, и
+to, к / в
+a, (артикль)
+in, в
+for, для / за
+is, есть
+on, на
+that, тот / что
+by, у / при
+this, этот
+with, с
+I, я
+you, ты / вы
+it, это
+not, не
+or, или
+be, быть
+are, есть (мн.ч.)
+from, из / от
+at, у / в
+as, как
+your, твой / ваш
+all, все / весь
+have, иметь
+new, новый
+more, больше
+an, (артикль)
+was, был
+we, мы
+will, буду
+home, дом / домой
+can, мочь
+us, нас
+about, о / около
+if, если
+my, мой
+has, имеет
+search, поиск
+free, свободный / бесплатный
+but, но
+our, наш
+one, один
+other, другой
+do, делать
+no, нет
+time, время
+they, они
+site, сайт / место
+he, он
+up, вверх
+may, мочь / май
+what, что
+which, который
+their, их
+news, новости
+out, вне / наружу
+use, использовать
+any, любой
+there, там
+see, видеть
+only, только
+so, так / поэтому
+his, его
+when, когда
+contact, контакт
+here, здесь
+business, бизнес
+who, кто
+web, сеть
+also, также
+now, сейчас
+help, помогать
+get, получать
+pm, после полудня
+view, вид / смотреть
+online, онлайн
+first, первый
+am, есть (я)
+been, был (прич.)
+would, бы
+how, как
+were, были
+me, меня
+services, услуги
+some, несколько
+these, эти
+click, клик / нажимать
+its, его (неод.)
+like, нравиться / как
+service, сервис
+than, чем
+find, находить
+price, цена
+date, дата / свидание
+back, назад / спина
+top, верх / лучший
+people, люди
+had, имел
+list, список
+name, имя
+just, просто / только что
+over, над / через
+state, государство / штат
+year, год
+day, день
+into, в
+email, электронная почта
+two, два
+health, здоровье
+world, мир
+next, следующий
+used, использованный
+go, идти
+work, работа / работать
+last, последний
+most, большинство
+products, продукты
+music, музыка
+buy, покупать
+data, данные
+make, делать
+them, им
+should, должен
+product, продукт
+system, система
+post, пост / почта
+her, ее
+city, город
+add, добавлять
+policy, политика
+number, число / номер
+such, такой
+please, пожалуйста
+available, доступный
+copyright, авторское право
+support, поддержка
+message, сообщение
+after, после
+best, лучший
+software, ПО / программа
+then, тогда
+jan, январь
+good, хороший
+video, видео
+well, хорошо
+where, где
+info, инфо
+rights, права
+public, публичный
+books, книги
+high, высокий
+school, школа
+through, через
+each, каждый
+links, ссылки
+she, она
+review, обзор
+years, годы
+order, заказ
+very, очень
+privacy, конфиденциальность
+book, книга
+items, предметы
+company, компания
+read, читать
+group, группа
+need, нуждаться
+many, многие
+user, пользователь
+said, сказал
+does, делает
+set, набор / устанавливать
+under, под
+general, общий
+research, исследование
+university, университет
+mail, почта
+full, полный
+map, карта
+reviews, обзоры
+program, программа
+life, жизнь
+know, знать
+games, игры
+way, путь / способ
+days, дни
+management, управление
+part, часть
+could, мог бы
+great, отличный / великий
+united, объединенный
+hotel, отель
+real, реальный
+item, предмет
+international, международный
+center, центр
+must, должен
+store, магазин / хранить
+travel, путешествие
+comments, комментарии
+made, сделанный
+development, развитие
+report, отчет
+off, выкл / с
+member, участник
+details, детали
+line, линия
+terms, условия
+before, до
+hotels, отели
+did, делал
+send, отправлять
+right, право / правильный
+type, тип
+because, потому что
+local, местный
+those, те
+using, используя
+results, результаты
+office, офис
+education, образование
+national, национальный
+car, машина
+design, дизайн
+take, брать
+posted, опубликовано
+internet, интернет
+address, адрес
+community, сообщество
+within, в пределах
+states, штаты
+area, область / район
+want, хотеть
+phone, телефон
+shipping, доставка
