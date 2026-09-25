@@ -189,6 +189,59 @@ def _show_update_balloon(tray: TrayManager, title: str, message: str, on_clicked
     icon.showMessage(title, message, QSystemTrayIcon.Information, 10000)
 
 
+def _open_data_folder(path: Path) -> None:
+    """Open `path` in the system file manager (tray balloon click). Never raises."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
+
+
+def _notify_data_dir_fallback(tray: TrayManager) -> None:
+    """Tell the user, once per install, that the app cannot write next to itself.
+
+    Shown only when config.FALLBACK_DATA_DIR is set (an AppImage, or any
+    read-only location). When a database is already sitting at the old
+    portable path, that path is named explicitly: silently starting on an
+    empty database would look exactly like losing every word the user has.
+
+    Reuses the existing update balloon — the app is architected never to steal
+    focus, so no new UI is built here. The marker in LOGS_DIR (which is by
+    definition writable at this point) keeps it to one balloon per install
+    rather than one per launch. Never raises.
+    """
+    try:
+        target = config.FALLBACK_DATA_DIR
+        if target is None:
+            return
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        marker = LOGS_DIR / config.DATA_DIR_NOTICE_MARKER
+        if marker.exists():
+            return
+
+        old_db = Path(sys.executable).parent / "data" / "lang_trainer.db"
+        message = (
+            "LangTrainer cannot write next to the executable, so your words, "
+            "logs and dictionaries now live in:\n"
+            f"{target}"
+        )
+        if config.PORTABLE_DATA_EXISTS:
+            message += (
+                "\n\nYour existing database is still at:\n"
+                f"{old_db}\n"
+                f"Copy it to {target / 'data'} to keep your words."
+            )
+        _show_update_balloon(
+            tray, APP_NAME, message, lambda: _open_data_folder(Path(target)),
+        )
+        marker.write_text(
+            f"{config.APP_VERSION}\n{target}\n", encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+
 def _run_update_flow(app: QApplication, db: DatabaseManager, tray: TrayManager,
                      main_window: MainWindow, timer_service: TimerService,
                      force: bool) -> None:
@@ -425,6 +478,11 @@ def main():
         1500,
         lambda: _run_update_flow(app, db, tray, main_window, timer_service, force=False),
     )
+
+    # Data-location notice: only fires when the app had to leave the portable
+    # path (AppImage / read-only directory), and only once per install. Staggered
+    # past the update check so the two balloons never stack.
+    QTimer.singleShot(2500, lambda: _notify_data_dir_fallback(tray))
     
     # Run application
     exit_code = app.exec()

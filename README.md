@@ -14,22 +14,17 @@ Grab the build for your platform from the **[Releases page](https://github.com/M
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows** (x64) | `LangTrainer-1.0.1-windows-x64.exe` | Single file, nothing to install. Run it as downloaded — renaming is optional, see below. SmartScreen will warn; it is unsigned. |
-| **Linux** (x64) | `LangTrainer-1.0.1-linux-x86_64.tar.gz` | Extract, then `chmod +x LangTrainer-1.0.1-linux-x86_64` before running. |
-| **macOS** (Apple Silicon) | `LangTrainer-1.0.1-macos-arm64.tar.gz` | Extract, then right-click `LangTrainer.app` → **Open**. Intel Macs are not supported in v1. |
-| Any | `LangTrainer-1.0.1-checksums.txt` | SHA-256 of every file above, for manual verification. |
+| **Windows** (x64) | `LangTrainer-1.0.2-windows-x64.exe` | Single file, nothing to install. Run it as downloaded — renaming is optional, see below. SmartScreen will warn; it is unsigned. |
+| **Linux** (x64) | `LangTrainer-1.0.2-linux-x86_64.AppImage` | **Recommended.** Single file, no install. `chmod +x`, then run it. |
+| **Linux** (x64) | `LangTrainer-1.0.2-linux-x86_64.tar.gz` | Plain executable. Extract, then `chmod +x LangTrainer-1.0.2-linux-x86_64` before running. |
+| **macOS** (Apple Silicon) | `LangTrainer-1.0.2-macos-arm64.tar.gz` | Extract, then right-click `LangTrainer.app` → **Open**. Intel Macs are not supported in v1. |
+| Any | `LangTrainer-1.0.2-checksums.txt` | SHA-256 of every file above, for manual verification. |
 
 > **Windows: renaming the download to `LangTrainer.exe` is optional, not required.** The updater
 > works under whatever file name you actually run — the downloaded
 > `LangTrainer-<version>-windows-x64.exe` updates in place and no second copy is created. Renaming
 > once is still worth it as a convenience if you want a **stable file name** for a desktop
 > shortcut or a taskbar pin, and a name that does not go stale after every future update.
-
-> **No Linux AppImage in v1.** The app is packaged as a plain executable because the
-> application stores its database, dictionaries and logs *next to the executable*, and an
-> AppImage is a read-only SquashFS mount — the app cannot create its database inside it.
-> A working AppImage needs a writable-data design change, which is tracked as follow-up
-> work. The `tar.gz` above is the supported Linux path for now.
 
 ---
 
@@ -45,6 +40,57 @@ The warning appears on every update too, because each downloaded binary is a new
 
 SmartScreen is scanning a file it cannot attribute to a known publisher — a code-signing
 certificate is what removes the warning, and signing is deferred to a later release.
+
+---
+
+## 🐧 Linux: the AppImage
+
+### Just run it — nothing to install
+
+```bash
+chmod +x LangTrainer-1.0.2-linux-x86_64.AppImage
+./LangTrainer-1.0.2-linux-x86_64.AppImage
+```
+
+That is the whole procedure. There is no installer, no package manager and no
+background service — the app is a tray icon and nothing else. After the first launch
+it appears in your tray/notification area.
+
+**Requires glibc 2.31 or newer** (Ubuntu 20.04, Debian 11, Fedora 32 and newer). On
+anything older, use the `tar.gz` instead: it has the same glibc requirement as the
+AppImage, so on a very old distribution neither will run and you need a newer system.
+
+> `chmod +x` is required every time you download a fresh copy — browsers do not keep
+> the executable bit, and neither does the GitHub Releases page.
+
+### Optional: install it into your application menu
+
+If you would rather launch LangTrainer from your menu and type `langtrainer` on the
+command line, download `install.sh` and `uninstall.sh` from the same release page,
+put them next to the AppImage, and run:
+
+```bash
+./install.sh
+```
+
+This needs **no administrator rights** — it installs into your own account and
+writes nothing outside your home directory. It copies the binary to
+`~/.local/share/LangTrainer/`, writes a menu entry into
+`~/.local/share/applications/`, and symlinks `langtrainer` into `~/.local/bin/`
+(both honour `XDG_DATA_HOME` and `XDG_BIN_DIR` if you set them). No daemon, no
+third-party integration, nothing left running.
+
+To undo it:
+
+```bash
+./uninstall.sh            # removes the app and keeps your words
+./uninstall.sh --purge    # removes the app AND your words, permanently
+```
+
+`uninstall.sh` **keeps your vocabulary by default**. Your database is the only copy
+of your work, so deleting it is opt-in via `--purge` and the script says so in its
+output. If you installed from the menu and later want to reinstall, run
+`./install.sh` again.
 
 ---
 
@@ -84,7 +130,7 @@ as **checksum-verified**, not as a guarantee of authenticity.
 
 macOS Gatekeeper blocks apps that are not notarised. Open it the normal way:
 
-1. Extract `LangTrainer-1.0.1-macos-arm64.tar.gz`.
+1. Extract `LangTrainer-1.0.2-macos-arm64.tar.gz`.
 2. **Right-click** `LangTrainer.app` → **Open**.
 3. Confirm with **Open** in the dialog.
 
@@ -95,7 +141,13 @@ refuses, see [Troubleshooting](#troubleshooting) below.
 
 ## 📁 Where your data lives
 
-Everything sits **next to the executable**, so an install is one folder you can copy or move:
+There are **two** layouts, and which one you get depends on how you run the app.
+Neither is hidden, and the app tells you on the first launch which one it picked.
+
+### Portable — the `tar.gz` route, or any folder you can write to
+
+Everything sits **next to the executable**, so an install is one folder you can copy
+or move:
 
 | Path | What it is |
 |---|---|
@@ -103,8 +155,56 @@ Everything sits **next to the executable**, so an install is one folder you can 
 | `logs/` | Crash log, update-check timestamp, single-instance lock. |
 | `dics/` | Ready-made dictionaries, unpacked on first run. |
 
-**To back up:** copy `data/lang_trainer.db` while the app is closed. That single file is your
-entire history. To reset completely, delete it — it is recreated empty on the next launch.
+This is the default. Whenever the folder next to the executable is writable — the
+normal case for the `tar.gz`, and for any copy you drop in `~/Apps` — the app uses
+it and nothing else changes.
+
+### AppImage, or any read-only location
+
+An AppImage is a read-only image, so the app cannot create anything beside it. In
+that case it uses the standard Linux user-data location:
+
+| Path | What it is |
+|---|---|
+| `~/.local/share/LangTrainer/data/lang_trainer.db` | Your words, statistics and best scores (SQLite). |
+| `~/.local/share/LangTrainer/logs/` | Crash log, update-check timestamp, single-instance lock. |
+| `~/.local/share/LangTrainer/dics/` | Ready-made dictionaries, unpacked on first run. |
+
+`$XDG_DATA_HOME` is honoured when set, so the folder is `$XDG_DATA_HOME/LangTrainer`
+instead of `~/.local/share/LangTrainer`. This applies to the AppImage, and also to any
+frozen build dropped somewhere the process cannot write — `/opt`, a read-only mount,
+a folder owned by another user.
+
+On the first launch in this mode the app shows **one** tray notification saying that
+it could not write next to the executable and where your data now lives. If it found
+an existing database at the old portable location, that notification names the old
+file as well, so you know exactly where your words still are. It is shown once, not
+on every launch.
+
+### ⚠️ Switching between the two does not move your words
+
+This is the one real consequence of having two layouts, and it is **not** automatic:
+the app never copies your database between them. Moving from the AppImage to a
+`tar.gz` install, or the other way round, gives you an empty word list — even though
+nothing has been deleted.
+
+To carry your words across, close the app and copy the database file:
+
+```bash
+# from the AppImage location into a portable folder
+mkdir -p ~/Apps/LangTrainer/data
+cp ~/.local/share/LangTrainer/data/lang_trainer.db ~/Apps/LangTrainer/data/
+
+# or from a portable folder into the AppImage location
+cp ~/Apps/LangTrainer/data/lang_trainer.db ~/.local/share/LangTrainer/data/
+```
+
+Copy the **file**, not the folder, and do it while the app is closed. `data/` and
+`logs/` are the only things that matter; `dics/` is unpacked again on the next launch.
+
+**To back up:** copy `lang_trainer.db` while the app is closed. That single file is
+your entire history. To reset completely, delete it — it is recreated empty on the
+next launch.
 
 > **⚠️ Do not install into a OneDrive (or other sync) folder.** A syncing client can restore an
 > old copy of the executable over a newer one, silently downgrading you — and can restore a stale
@@ -135,7 +235,7 @@ The executable bit is lost when the file is transferred through some browsers, a
 OneDrive. Restore it:
 
 ```bash
-chmod +x LangTrainer-1.0.1-linux-x86_64
+chmod +x LangTrainer-1.0.2-linux-x86_64
 ```
 
 </details>
@@ -146,16 +246,22 @@ chmod +x LangTrainer-1.0.1-linux-x86_64
 The app runs in the system tray — look for the icon in the tray/notification area, which may be
 collapsed behind the ▸ arrow. If it is not there either, the crash log explains why:
 **right-click the tray icon → 📂  Open Log Folder**, or read `logs/langtrainer-crash.log`
-directly. The app also shows a "could not start" dialog if it cannot create its data folder —
-installing into a read-only location such as `C:\Program Files` causes this.
+directly. The app also shows a "could not start" dialog if it cannot create its data folder.
+
+If the folder the executable sits in cannot be written to — `C:\Program Files` on Windows,
+an AppImage on Linux — the app no longer fails. It falls back to the user data location
+described in [Where your data lives](#-where-your-data-lives) and shows a tray notification
+saying so. If you got that notification *and* your word list looks empty, see
+[Switching between the two](#-switching-between-the-two-does-not-move-your-words): your
+database was not moved for you.
 
 </details>
 
 <details>
 <summary><b>I want to check a download myself</b></summary>
 
-`sha256sum -c LangTrainer-1.0.1-checksums.txt` (Linux/macOS) or
-`certutil -hashfile LangTrainer-1.0.1-windows-x64.exe SHA256` (Windows).
+`sha256sum -c LangTrainer-1.0.2-checksums.txt` (Linux/macOS) or
+`certutil -hashfile LangTrainer-1.0.2-windows-x64.exe SHA256` (Windows).
 
 </details>
 

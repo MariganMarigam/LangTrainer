@@ -152,9 +152,200 @@ jobs:
           archive: false
           if-no-files-found: error
 
+  appimage:
+    name: AppImage (Linux x86_64)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      # Same rule as the build matrix: a tag push (vX.Y.Z) -> X.Y.Z, anything
+      # else (workflow_dispatch) -> placeholder. $GITHUB_ENV only reaches LATER
+      # steps, so the local copy is logged here.
+      - name: Resolve version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$GITHUB_REF_NAME" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="0.0.0-dev"
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "Resolved VERSION=$VERSION"
+
+      - uses: actions/checkout@v7
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # The committed config.py stays at 1.0.0 for local dev builds; this patch
+      # is CI-only and must match the build matrix exactly.
+      - name: Sync config.APP_VERSION with the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c 'import pathlib,re,sys
+          t=sys.argv[1];p=pathlib.Path("config.py");s=p.read_text(encoding="utf-8")
+          o,n=re.subn(r"(?m)^APP_VERSION.*$", "APP_VERSION = "+chr(34)+t+chr(34), s, count=1)
+          assert n==1, "FAIL: no APP_VERSION assignment found in config.py"
+          p.write_text(o, encoding="utf-8")
+          r=re.search(r"(?m)^APP_VERSION\s*=\s*(.*)$", p.read_text(encoding="utf-8"))
+          assert r, "FAIL: APP_VERSION line missing after write"
+          v=r.group(1).strip().strip(chr(34)+chr(39))
+          assert v==t, "FAIL: APP_VERSION is %r, expected %r" % (v, t)
+          print("config.APP_VERSION ->", v)' "$VERSION"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-build.txt
+
+      # An AppImage is a SquashFS of a DIRECTORY, so it can only be built from
+      # the onedir output. A onefile bundle is a single self-extracting
+      # executable: squashing it would ship an exe that unpacks to a temp dir on
+      # every start, which is not what an AppImage is for.
+      - name: Build (onedir, the AppImage payload)
+        run: python build.py --onedir
+
+      - name: Install AppImage build and FUSE tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # mksquashfs builds the image; libfuse2 provides `fusermount`, which the
+          # type-2 runtime calls to mount itself. Both are installed explicitly
+          # rather than assumed to be on the runner image.
+          sudo apt-get install -y --no-install-recommends squashfs-tools libfuse2
+
+      - name: Assemble the AppDir
+        shell: bash
+        run: |
+          set -euo pipefail
+          APPDIR="AppDir"
+          rm -rf "$APPDIR"
+          mkdir -p "$APPDIR"
+          cp -a dist/LangTrainer_onedir/LangTrainer/. "$APPDIR/"
+
+          cat > "$APPDIR/AppRun" <<'APPRUN'
+          #!/bin/sh
+          # The type-2 runtime mounts this squashfs read-only and runs this script
+          # from the mount, so $0 is already the real path inside it.
+          HERE="$(dirname "$(readlink -f "$0")")"
+          exec "$HERE/LangTrainer" "$@"
+          APPRUN
+          chmod 755 "$APPDIR/AppRun"
+
+          cat > "$APPDIR/langtrainer.desktop" <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=LangTrainer
+          Comment=Learn foreign words through passive popups and 13 games
+          Exec=AppRun
+          Icon=langtrainer
+          Terminal=false
+          Categories=Education;Language;
+          StartupNotify=false
+          DESKTOP
+
+          cp assets/icons/langtrainer.png "$APPDIR/langtrainer.png"
+          # The hicolor copy is what a desktop environment looks for once the
+          # image is installed to a real prefix; the root copy is the AppImage
+          # convention. Both point at the same 1024 px asset.
+          mkdir -p "$APPDIR/usr/share/icons/hicolor/1024x1024/apps"
+          cp assets/icons/langtrainer.png "$APPDIR/usr/share/icons/hicolor/1024x1024/apps/langtrainer.png"
+
+          test -x "$APPDIR/AppRun"
+          test -f "$APPDIR/langtrainer.desktop"
+          test -f "$APPDIR/langtrainer.png"
+          ls -l "$APPDIR"
+
+      - name: Build the AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          ASSET="LangTrainer-${VERSION}-linux-x86_64.AppImage"
+          RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+          # The official type-2 runtime. Its built-in squashfs reader supports
+          # zlib and zstd ONLY — an xz image mounts with a bare "Cannot mount
+          # AppImage" and no clue why, so -comp zstd below is load-bearing.
+          curl -fsSL --retry 3 -o runtime-x86_64 "$RUNTIME_URL"
+          test -s runtime-x86_64
+
+          mksquashfs AppDir app.squashfs -root-owned -noappend -comp zstd -no-progress -no-xattrs
+          cat runtime-x86_64 app.squashfs > "$ASSET"
+          chmod 755 "$ASSET"
+          ls -l "$ASSET"
+
+          # A few hundred bytes means the payload is missing; a 500 MB image
+          # means something shipped uncompressed. Both are broken releases.
+          SIZE=$(stat -c %s "$ASSET")
+          echo "AppImage size: $SIZE bytes"
+          if [ "$SIZE" -lt 5000000 ] || [ "$SIZE" -gt 400000000 ]; then
+            echo "::error::Implausible AppImage size: $SIZE bytes"
+            exit 1
+          fi
+
+      # "The build exited 0" is NOT evidence. An AppImage whose data path is
+      # read-only starts, creates nothing and exits 0 — the exact defect this
+      # step exists to catch — so the image is actually executed against a
+      # scratch HOME and the resulting data directory is asserted.
+      - name: Verify the AppImage runs and creates its data
+        shell: bash
+        run: |
+          set -uo pipefail
+          ASSET="LangTrainer-${VERSION}-linux-x86_64.AppImage"
+          SCRATCH="${RUNNER_TEMP}/lt-appimage-home"
+          rm -rf "$SCRATCH"
+          mkdir -p "$SCRATCH"
+          DATA_DIR="${SCRATCH}/.local/share/LangTrainer/data"
+
+          HOME="$SCRATCH" QT_QPA_PLATFORM=offscreen \
+            timeout --signal=KILL 180 "$PWD/$ASSET" > appimage-run.log 2>&1 &
+          APP_PID=$!
+
+          for _ in $(seq 1 60); do
+            if [ -d "$DATA_DIR" ]; then break; fi
+            sleep 2
+          done
+
+          # Stop the app and the runtime that mounted the image. `set -e` is off
+          # in this step so a vanished process cannot abort it.
+          kill -9 "$APP_PID" 2>/dev/null || true
+          pkill -9 -f "$ASSET" 2>/dev/null || true
+          pkill -9 -f "\.mount_[^/]*/LangTrainer" 2>/dev/null || true
+
+          echo "--- appimage-run.log ---"
+          cat appimage-run.log || true
+          echo "--- scratch HOME tree ---"
+          find "$SCRATCH" -maxdepth 5 || true
+
+          if [ ! -d "$DATA_DIR" ]; then
+            echo "::error::The AppImage did not create $DATA_DIR. The image builds but the app is broken — refusing to publish it."
+            exit 1
+          fi
+          if [ ! -f "$DATA_DIR/lang_trainer.db" ]; then
+            echo "::error::$DATA_DIR exists but lang_trainer.db is missing — the app started without a database."
+            exit 1
+          fi
+          if [ ! -f "${SCRATCH}/.local/share/LangTrainer/logs/langtrainer-crash.log" ]; then
+            echo "::note::No crash log — the app started cleanly."
+          fi
+          echo "OK: the AppImage created $DATA_DIR"
+
+      # archive:false + a pre-chmod'ed file, for the same reason the Linux
+      # onefile is tarred: upload-artifact v4+ does not round-trip the exec bit.
+      - name: Upload artifact (AppImage)
+        uses: actions/upload-artifact@v7
+        with:
+          name: LangTrainer-${{ env.VERSION }}-linux-x86_64.AppImage
+          path: LangTrainer-${{ env.VERSION }}-linux-x86_64.AppImage
+          archive: false
+          if-no-files-found: error
+
   release:
     name: GitHub Release
-    needs: build
+    needs: [build, appimage]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -177,6 +368,25 @@ jobs:
           pattern: LangTrainer-*
           path: release-assets
           merge-multiple: true
+
+      # upload-artifact does not round-trip POSIX permissions, so the AppImage
+      # can arrive here without its exec bit. Restore it before publishing:
+      # `softprops/action-gh-release` uploads whatever is on disk.
+      - name: Restore the AppImage exec bit
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          found=0
+          for f in release-assets/*.AppImage; do
+            chmod 755 "$f"
+            ls -l "$f"
+            found=1
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No .AppImage among the downloaded build artifacts"
+            exit 1
+          fi
 
       # CONVENIENCE asset for manual user verification. This is NOT the updater's
       # trust anchor — the updater uses release["assets"][].digest ("sha256:<hex>"),
