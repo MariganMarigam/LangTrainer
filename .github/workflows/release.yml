@@ -122,12 +122,15 @@ jobs:
           tar -czf "LangTrainer-${VERSION}-macos-arm64.tar.gz" -C dist/LangTrainer_onefile LangTrainer.app
           ls -l "LangTrainer-${VERSION}-macos-arm64.tar.gz"
 
+      # `with:` inputs expand ${{ }} GitHub expressions only — a shell-style
+      # ${VERSION} reaches upload-artifact as a literal and matches no file.
+      # (The `run:` steps above DO get shell expansion, which is why packaging works.)
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v7
         with:
-          name: LangTrainer-${VERSION}-windows-x64.exe
-          path: LangTrainer-${VERSION}-windows-x64.exe
+          name: LangTrainer-${{ env.VERSION }}-windows-x64.exe
+          path: LangTrainer-${{ env.VERSION }}-windows-x64.exe
           archive: false
           if-no-files-found: error
 
@@ -135,8 +138,8 @@ jobs:
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7
         with:
-          name: LangTrainer-${VERSION}-linux-x86_64.tar.gz
-          path: LangTrainer-${VERSION}-linux-x86_64.tar.gz
+          name: LangTrainer-${{ env.VERSION }}-linux-x86_64.tar.gz
+          path: LangTrainer-${{ env.VERSION }}-linux-x86_64.tar.gz
           archive: false
           if-no-files-found: error
 
@@ -144,8 +147,8 @@ jobs:
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v7
         with:
-          name: LangTrainer-${VERSION}-macos-arm64.tar.gz
-          path: LangTrainer-${VERSION}-macos-arm64.tar.gz
+          name: LangTrainer-${{ env.VERSION }}-macos-arm64.tar.gz
+          path: LangTrainer-${{ env.VERSION }}-macos-arm64.tar.gz
           archive: false
           if-no-files-found: error
 

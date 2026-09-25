@@ -5,3 +5,9 @@
 # who already holds the previous binary.
 pyinstaller==6.22.3
 pyinstaller-hooks-contrib==2026.7
+
+# Build-time only — NOT bundled into the application. PyInstaller refuses a .png
+# icon on Windows (.ico required) and on macOS (.icns required) unless Pillow is
+# importable, in which case it converts automatically. Without this the build dies
+# with "Received icon image ... which exists but is not in the correct format".
+pillow==12.3.0
