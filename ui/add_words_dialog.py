@@ -11,6 +11,12 @@ from ui.styles import (
     Colors, Fonts, pill_button_style, card_style, label_style,
     destructive_button_style,
 )
+from config import DICS_DIR
+
+
+def _default_word_file_dir(dics_dir: Path) -> Path:
+    """Return the folder the import dialog should open in."""
+    return dics_dir if list(dics_dir.glob("*.txt")) else Path.home()
 
 
 class AddWordsDialog(QDialog):
@@ -138,7 +144,7 @@ class AddWordsDialog(QDialog):
     def _select_file(self) -> None:
         """Open file dialog and parse the selected file."""
         file_path, _ = QFileDialog.getOpenFileName(
-            self, "Select Word File", "",
+            self, "Select Word File", str(_default_word_file_dir(DICS_DIR)),
             "Word Files (*.txt *.csv);;Text Files (*.txt);;CSV Files (*.csv);;All Files (*)"
         )
         if not file_path:

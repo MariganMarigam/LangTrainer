@@ -33,6 +33,15 @@ data/*.db-journal
 data/*.db-wal
 data/*.db-shm
 
+# ── Runtime logs (crash log, update throttle, single-instance lock) ──
+logs/
+
+# ── Updater staging files (download / self-swap, see services/updater.py) ──
+*.part
+*.new
+*.old
+*.nonce
+
 # ── Project-local (not for public repo) ──────────────────
 AGENTS.md
 docs/

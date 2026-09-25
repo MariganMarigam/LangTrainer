@@ -1,0 +1,7 @@
+# Build-time dependencies, pinned exactly.
+#
+# Pinning is required: an unpinned CI build changes the bootloader bytes, which
+# changes the published checksum, and can break a Windows self-swap for a user
+# who already holds the previous binary.
+pyinstaller==6.22.3
+pyinstaller-hooks-contrib==2026.7

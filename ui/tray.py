@@ -24,6 +24,8 @@ class TrayManager(QObject):
     show_main_window_requested = Signal()
     hide_main_window_requested = Signal()
     clear_database_requested = Signal()
+    open_logs_requested = Signal()
+    check_updates_requested = Signal()
     quit_requested = Signal()
     
     def __init__(self, parent=None):
@@ -52,7 +54,15 @@ class TrayManager(QObject):
         clear_action = QAction("🗑  Clear Database…", self._menu)
         clear_action.triggered.connect(self.clear_database_requested.emit)
         self._menu.addAction(clear_action)
-        
+
+        open_logs_action = QAction("📂  Open Log Folder", self._menu)
+        open_logs_action.triggered.connect(self.open_logs_requested.emit)
+        self._menu.addAction(open_logs_action)
+
+        check_updates_action = QAction("⬆️  Check for Updates", self._menu)
+        check_updates_action.triggered.connect(self.check_updates_requested.emit)
+        self._menu.addAction(check_updates_action)
+
         self._menu.addSeparator()
         
         quit_action = QAction("🚪  Quit", self._menu)

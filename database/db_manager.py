@@ -86,6 +86,9 @@ class DatabaseManager:
         if self.conn:
             self.conn.close()
             self.conn = None
+        # Drop the cursor too: a late timer tick must not reach a closed
+        # connection (ProgrammingError inside a console-less app — bug B6).
+        self.cursor = None
     
 
     def _migrate_srs_columns(self):
@@ -99,8 +102,14 @@ class DatabaseManager:
         ]:
             try:
                 self.cursor.execute(f"ALTER TABLE words ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass  # Column already exists
+            except sqlite3.OperationalError as exc:
+                msg = str(exc).lower()
+                if "duplicate column name" in msg:
+                    continue          # benign: the column already exists
+                # A locked DB means the schema was NOT migrated. Swallowing this
+                # would surface later as "no such column" deep inside the SRS
+                # game, far from the cause. Fail loudly instead (bug B5).
+                raise
         self.conn.commit()
 
     def _migrate_game_stats(self):

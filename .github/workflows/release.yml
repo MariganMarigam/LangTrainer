@@ -1,0 +1,212 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Create a GitHub Release. Leave false to build and upload CI artifacts only (dry run).'
+        type: boolean
+        required: false
+        default: false
+
+# Build jobs only ever read the repo. Only the release job writes.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    strategy:
+      # One platform failing must not cancel the other two: the release needs
+      # to know the full picture, and a partial matrix is still useful.
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    steps:
+      # VERSION is the single source of truth for every asset filename.
+      # A tag push (vX.Y.Z) -> X.Y.Z. Anything else (workflow_dispatch) -> placeholder.
+      - name: Resolve version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$GITHUB_REF_NAME" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"
+          fi
+          echo "Resolved VERSION=$VERSION"
+
+      - uses: actions/checkout@v7
+
+      # macOS note: python-versions ships darwin builds as arm64/x64 only — there is
+      # no universal2 artefact — so this is an arm64 interpreter on macos-latest
+      # (macOS 26, arm64). The published asset is therefore arm64-only, which is
+      # exactly what the asset name and updater.platform_asset_key() declare.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # The tag is the single source of truth for the version. config.APP_VERSION is
+      # the updater's comparison source; if it silently drifted from the tag the
+      # updater would report "up to date" forever, or nag forever. The committed
+      # config.py stays at 1.0.0 for local dev builds — this patch is CI-only.
+      - name: Sync config.APP_VERSION with the tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -c 'import pathlib,re,sys
+          t=sys.argv[1];p=pathlib.Path("config.py");s=p.read_text(encoding="utf-8")
+          o,n=re.subn(r"(?m)^APP_VERSION.*$", "APP_VERSION = "+chr(34)+t+chr(34), s, count=1)
+          assert n==1, "FAIL: no APP_VERSION assignment found in config.py"
+          p.write_text(o, encoding="utf-8")
+          r=re.search(r"(?m)^APP_VERSION\s*=\s*(.*)$", p.read_text(encoding="utf-8"))
+          assert r, "FAIL: APP_VERSION line missing after write"
+          v=r.group(1).strip().strip(chr(34)+chr(39))
+          assert v==t, "FAIL: APP_VERSION is %r, expected %r" % (v, t)
+          print("config.APP_VERSION ->", v)' "$VERSION"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt -r requirements-build.txt
+
+      - name: Build (onefile)
+        run: python build.py
+
+      # upload-artifact v4+ forces every extracted file to mode 644, so a zipped
+      # Linux binary would arrive without its exec bit. Tar first, upload the tar
+      # with archive:false so permissions survive the round trip.
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp "dist/LangTrainer_onefile/LangTrainer.exe" "LangTrainer-${VERSION}-windows-x64.exe"
+          ls -l "LangTrainer-${VERSION}-windows-x64.exe"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The dictionaries travel inside the onefile bundle; the app copies them
+          # to ./dics next to the executable on first frozen launch.
+          cp "dist/LangTrainer_onefile/LangTrainer" "LangTrainer-${VERSION}-linux-x86_64"
+          chmod +x "LangTrainer-${VERSION}-linux-x86_64"
+          tar -czf "LangTrainer-${VERSION}-linux-x86_64.tar.gz" "LangTrainer-${VERSION}-linux-x86_64"
+          ls -l "LangTrainer-${VERSION}-linux-x86_64.tar.gz"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="dist/LangTrainer_onefile/LangTrainer.app"
+          INNER="$APP/Contents/MacOS/LangTrainer"
+          if [ ! -x "$INNER" ]; then
+            chmod +x "$INNER"
+          fi
+          if [ ! -x "$INNER" ]; then
+            echo "::error::${INNER} is not executable — refusing to tar a broken .app"
+            exit 1
+          fi
+          tar -czf "LangTrainer-${VERSION}-macos-arm64.tar.gz" -C dist/LangTrainer_onefile LangTrainer.app
+          ls -l "LangTrainer-${VERSION}-macos-arm64.tar.gz"
+
+      - name: Upload artifact (Windows)
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: LangTrainer-${VERSION}-windows-x64.exe
+          path: LangTrainer-${VERSION}-windows-x64.exe
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload artifact (Linux)
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: LangTrainer-${VERSION}-linux-x86_64.tar.gz
+          path: LangTrainer-${VERSION}-linux-x86_64.tar.gz
+          archive: false
+          if-no-files-found: error
+
+      - name: Upload artifact (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v7
+        with:
+          name: LangTrainer-${VERSION}-macos-arm64.tar.gz
+          path: LangTrainer-${VERSION}-macos-arm64.tar.gz
+          archive: false
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_REF_TYPE" = "tag" ] && [ "${GITHUB_REF_NAME#v}" != "$GITHUB_REF_NAME" ]; then
+            echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "VERSION=0.0.0-dev" >> "$GITHUB_ENV"
+          fi
+          echo "Resolved VERSION=$VERSION"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: LangTrainer-*
+          path: release-assets
+          merge-multiple: true
+
+      # CONVENIENCE asset for manual user verification. This is NOT the updater's
+      # trust anchor — the updater uses release["assets"][].digest ("sha256:<hex>"),
+      # which arrives in the same API response as the asset URL.
+      # `sha256sum *` globs before the redirect creates the output, so the file
+      # never hashes itself.
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release-assets
+          ls -l
+          sha256sum * > "LangTrainer-${VERSION}-checksums.txt"
+          cat "LangTrainer-${VERSION}-checksums.txt"
+
+      # A tag push always publishes. A manual dispatch only publishes when the
+      # `publish` input is true (default false), which is the dry-run path.
+      # `inputs.publish` is null on a push, and null != false is FALSE in GitHub
+      # expression semantics, so the branch is decided in bash, not in an `if:`.
+      - name: Decide whether to publish
+        id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "publish=${{ inputs.publish }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "publish -> $(cat "$GITHUB_OUTPUT" 2>/dev/null | tail -1)"
+
+      - name: Publish GitHub Release
+        if: steps.decide.outputs.publish == 'true'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: release-assets/*
+          generate_release_notes: true
+          fail_on_unmatched_files: true
