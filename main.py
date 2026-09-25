@@ -267,7 +267,7 @@ def _run_update_flow(app: QApplication, db: DatabaseManager, tray: TrayManager,
         return
     if not force and not updater.should_check(state):
         return
-    release = updater.fetch_latest_release(APP_VERSION)
+    release = updater.fetch_latest_release(config.APP_VERSION)
     if release is None:
         # Dead network or no release published yet: completely silent, but the
         # timestamp is still recorded so a user on a plane does not retry on
