@@ -432,10 +432,21 @@ jobs:
       # scripts are byte-for-byte the committed ones.
       - uses: actions/checkout@v7
 
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: LangTrainer-*
+          path: release-assets
+          merge-multiple: true
+
+      # Must come AFTER the download above: that step is what creates
+      # release-assets/. `mkdir -p` keeps this step correct on its own terms
+      # rather than depending on a sibling step's side effect.
       - name: Stage the install scripts
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p release-assets
           for s in install.sh uninstall.sh; do
             if [ ! -f "$s" ]; then
               echo "::error::$s is missing from the checkout"
@@ -445,13 +456,6 @@ jobs:
             chmod 755 "release-assets/$s"
           done
           ls -l release-assets/install.sh release-assets/uninstall.sh
-
-      - name: Download build artifacts
-        uses: actions/download-artifact@v8
-        with:
-          pattern: LangTrainer-*
-          path: release-assets
-          merge-multiple: true
 
       # upload-artifact does not round-trip POSIX permissions, so the AppImage
       # can arrive here without its exec bit. Restore it before publishing:
