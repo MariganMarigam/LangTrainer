@@ -14,15 +14,16 @@ Grab the build for your platform from the **[Releases page](https://github.com/M
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows** (x64) | `LangTrainer-1.0.0-windows-x64.exe` | Single file, nothing to install. **Rename it to `LangTrainer.exe`** so in-app updates work — see below. SmartScreen will warn; it is unsigned. |
-| **Linux** (x64) | `LangTrainer-1.0.0-linux-x86_64.tar.gz` | Extract, then `chmod +x LangTrainer-1.0.0-linux-x86_64` before running. |
-| **macOS** (Apple Silicon) | `LangTrainer-1.0.0-macos-arm64.tar.gz` | Extract, then right-click `LangTrainer.app` → **Open**. Intel Macs are not supported in v1. |
-| Any | `LangTrainer-1.0.0-checksums.txt` | SHA-256 of every file above, for manual verification. |
+| **Windows** (x64) | `LangTrainer-1.0.1-windows-x64.exe` | Single file, nothing to install. Run it as downloaded — renaming is optional, see below. SmartScreen will warn; it is unsigned. |
+| **Linux** (x64) | `LangTrainer-1.0.1-linux-x86_64.tar.gz` | Extract, then `chmod +x LangTrainer-1.0.1-linux-x86_64` before running. |
+| **macOS** (Apple Silicon) | `LangTrainer-1.0.1-macos-arm64.tar.gz` | Extract, then right-click `LangTrainer.app` → **Open**. Intel Macs are not supported in v1. |
+| Any | `LangTrainer-1.0.1-checksums.txt` | SHA-256 of every file above, for manual verification. |
 
-> **Windows: rename the download to `LangTrainer.exe`.** The updater identifies your app by
-> that exact name. Run it under the versioned download name and the first self-update installs
-> `LangTrainer.exe` beside it, leaving a stale duplicate behind. Renaming once avoids this.
-> (The `NO_AUTOUPDATE` opt-out file has the same name dependency — it must sit next to the exe.)
+> **Windows: renaming the download to `LangTrainer.exe` is optional, not required.** The updater
+> works under whatever file name you actually run — the downloaded
+> `LangTrainer-<version>-windows-x64.exe` updates in place and no second copy is created. Renaming
+> once is still worth it as a convenience if you want a **stable file name** for a desktop
+> shortcut or a taskbar pin, and a name that does not go stale after every future update.
 
 > **No Linux AppImage in v1.** The app is packaged as a plain executable because the
 > application stores its database, dictionaries and logs *next to the executable*, and an
@@ -62,8 +63,8 @@ certificate is what removes the warning, and signing is deferred to a later rele
   button is disabled and only *Later* is offered — a restart would lose your in-flight run.
 - **Force a check:** right-click the tray icon → **⬆️  Check for Updates**. This bypasses the
   24-hour throttle and the opt-out, and is the way back in after opting out.
-- **Opt out permanently:** create an empty file named `NO_AUTOUPDATE` next to the executable
-  (`LangTrainer.exe` / `LangTrainer`).
+- **Opt out permanently:** create an empty file named `NO_AUTOUPDATE` in the same folder as the
+  executable, whatever that executable happens to be called.
 - **macOS and Linux do not self-install.** On those platforms the updater only notifies you and
   opens the Releases page, because replacing a running macOS `.app` bundle or a Linux binary in
   place is not something this updater does. Download the new file yourself — your `data/` and
@@ -83,7 +84,7 @@ as **checksum-verified**, not as a guarantee of authenticity.
 
 macOS Gatekeeper blocks apps that are not notarised. Open it the normal way:
 
-1. Extract `LangTrainer-1.0.0-macos-arm64.tar.gz`.
+1. Extract `LangTrainer-1.0.1-macos-arm64.tar.gz`.
 2. **Right-click** `LangTrainer.app` → **Open**.
 3. Confirm with **Open** in the dialog.
 
@@ -134,7 +135,7 @@ The executable bit is lost when the file is transferred through some browsers, a
 OneDrive. Restore it:
 
 ```bash
-chmod +x LangTrainer-1.0.0-linux-x86_64
+chmod +x LangTrainer-1.0.1-linux-x86_64
 ```
 
 </details>
@@ -153,8 +154,8 @@ installing into a read-only location such as `C:\Program Files` causes this.
 <details>
 <summary><b>I want to check a download myself</b></summary>
 
-`sha256sum -c LangTrainer-1.0.0-checksums.txt` (Linux/macOS) or
-`certutil -hashfile LangTrainer-1.0.0-windows-x64.exe SHA256` (Windows).
+`sha256sum -c LangTrainer-1.0.1-checksums.txt` (Linux/macOS) or
+`certutil -hashfile LangTrainer-1.0.1-windows-x64.exe SHA256` (Windows).
 
 </details>
 

@@ -6,11 +6,13 @@ mismatched nonce WITHOUT touching a single file. A macOS `.app` is a directory
 bundle `os.replace` cannot replace, and a manually typed `--complete-update`
 must not be able to destroy a good install.
 """
+import ctypes
 import hashlib
 import os
 import sys
 import tempfile
 import time
+import types
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,6 +20,35 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import services.updater as updater
 
 _EXE = "LangTrainer.exe"  # updater.exe_name() with sys.platform forced to win32
+_VERSIONED = "LangTrainer-1.0.0-windows-x64.exe"  # the name the release publishes
+
+
+class _DeadProcessKernel32:
+    """Stand-in for ctypes.windll.kernel32 on Linux, where it does not exist.
+
+    Forcing sys.platform="win32" sends process_is_alive down the win32 branch.
+    Every PID is reported dead via ERROR_INVALID_PARAMETER, so
+    wait_for_pid_exit returns immediately instead of sleeping 30 s.
+    """
+
+    def OpenProcess(self, access, inherit, pid):  # noqa: N802 - win32 name
+        return 0
+
+    def GetLastError(self):  # noqa: N802 - win32 name
+        return updater._ERROR_INVALID_PARAMETER
+
+    def GetExitCodeProcess(self, handle, ptr):  # noqa: N802 - win32 name
+        return 1
+
+    def CloseHandle(self, handle):  # noqa: N802 - win32 name
+        return 1
+
+
+def _frozen_as(monkeypatch, exe_path):
+    """Make the process look like the published binary at `exe_path`."""
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", str(exe_path))
+    monkeypatch.setattr(sys, "platform", "win32")
 
 
 def _digest_tree(directory: Path) -> dict:
@@ -150,3 +181,82 @@ def test_complete_update_returns_3_when_nothing_staged(monkeypatch):
         assert updater.complete_update(os.getpid(), "tok3n") == 3
         assert (exe_dir / _EXE).read_bytes() == b"old-image"
     print("test_complete_update_returns_3_when_nothing_staged: PASS")
+
+
+# ── The real released file name (v1.0.1 fix) ────────────────────────────────
+# The release publishes LangTrainer-1.0.0-windows-x64.exe, so exe_name() must
+# resolve to whatever the user actually launched. A hardcoded name made the
+# swap install a second LangTrainer.exe beside the running binary.
+
+
+def test_exe_name_returns_real_filename_when_frozen(monkeypatch):
+    launched = Path("/tmp/does-not-matter") / _VERSIONED
+    _frozen_as(monkeypatch, launched)
+    assert updater.exe_name() == _VERSIONED
+    assert updater.exe_name() == launched.name
+    print("test_exe_name_returns_real_filename_when_frozen: PASS")
+
+
+def test_exe_name_falls_back_when_not_frozen(monkeypatch):
+    monkeypatch.delattr(sys, "frozen", raising=False)
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert updater.exe_name() == "LangTrainer.exe"
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert updater.exe_name() == "LangTrainer"
+    print("test_exe_name_falls_back_when_not_frozen: PASS")
+
+
+def test_exe_name_ignores_empty_executable(monkeypatch):
+    # A frozen process whose sys.executable is empty must not yield "".
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "executable", "")
+    monkeypatch.setattr(sys, "platform", "win32")
+    assert updater.exe_name() == "LangTrainer.exe"
+    monkeypatch.setattr(sys, "platform", "linux")
+    assert updater.exe_name() == "LangTrainer"
+    print("test_exe_name_ignores_empty_executable: PASS")
+
+
+def test_self_heal_is_noop_for_versioned_executable(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        exe_dir = Path(tmp)
+        (exe_dir / _VERSIONED).write_bytes(b"live-image")
+        _frozen_as(monkeypatch, exe_dir / _VERSIONED)
+        before = sorted(p.name for p in exe_dir.iterdir())
+        before_digests = _digest_tree(exe_dir)
+
+        updater.self_heal(exe_dir)
+
+        assert sorted(p.name for p in exe_dir.iterdir()) == before
+        assert _digest_tree(exe_dir) == before_digests
+        assert before == [_VERSIONED], "scratch dir must hold only the versioned exe"
+        assert (exe_dir / "LangTrainer.exe").exists() is False
+    print("test_self_heal_is_noop_for_versioned_executable: PASS")
+
+
+def test_complete_update_under_versioned_name_leaves_single_binary(monkeypatch):
+    with tempfile.TemporaryDirectory() as tmp:
+        exe_dir = Path(tmp)
+        (exe_dir / _VERSIONED).write_bytes(b"old-image")
+        (exe_dir / (_VERSIONED + ".new")).write_bytes(b"new-image")
+        (exe_dir / (_VERSIONED + ".nonce")).write_text("tok3n", encoding="utf-8")
+        _frozen_as(monkeypatch, exe_dir / _VERSIONED)
+        monkeypatch.setattr(
+            ctypes, "windll", types.SimpleNamespace(kernel32=_DeadProcessKernel32()),
+            raising=False,
+        )
+        relaunched = []
+        monkeypatch.setattr(
+            updater.subprocess, "Popen", lambda *a, **k: relaunched.append(a[0])
+        )
+
+        assert updater.complete_update(0x7FFFFFF0, "tok3n") == 0
+
+        names = sorted(p.name for p in exe_dir.iterdir())
+        exes = [n for n in names if n.endswith(".exe")]
+        assert exes == [_VERSIONED], f"expected one versioned exe, got {exes}"
+        assert "LangTrainer.exe" not in names
+        assert not any(n.endswith(".old") for n in names), f"stale backup: {names}"
+        assert (exe_dir / _VERSIONED).read_bytes() == b"new-image"
+        assert relaunched == [[str(exe_dir / _VERSIONED)]]
+    print("test_complete_update_under_versioned_name_leaves_single_binary: PASS")

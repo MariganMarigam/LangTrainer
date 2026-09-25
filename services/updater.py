@@ -68,7 +68,21 @@ CREATE_NEW_PROCESS_GROUP = 0x00000200
 
 # ── Platform ────────────────────────────────────────────────────────────────
 def exe_name() -> str:
-    """Return the file name of the application executable on this platform."""
+    """Return the file name of the running application executable.
+
+    When frozen this MUST be the name the user actually launched, not a
+    hardcoded one: the release publishes ``LangTrainer-<version>-windows-x64.exe``,
+    and the swap logic renames files relative to this. A hardcoded name made the
+    updater install a second copy beside the file the user is running.
+
+    Returns:
+        The basename of ``sys.executable`` when frozen, else the platform
+        default (``LangTrainer.exe`` on Windows, ``LangTrainer`` elsewhere).
+    """
+    if getattr(sys, "frozen", False):
+        name = Path(sys.executable).name
+        if name:
+            return name
     return "LangTrainer.exe" if sys.platform == "win32" else "LangTrainer"
 
 
