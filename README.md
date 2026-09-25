@@ -79,6 +79,7 @@ command line, download `install.sh` and `uninstall.sh` from the same release pag
 put them next to the AppImage, and run:
 
 ```bash
+chmod +x install.sh uninstall.sh
 ./install.sh
 ```
 
