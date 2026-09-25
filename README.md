@@ -14,10 +14,15 @@ Grab the build for your platform from the **[Releases page](https://github.com/M
 
 | Platform | File | Notes |
 |---|---|---|
-| **Windows** (x64) | `LangTrainer-1.0.0-windows-x64.exe` | Single file, nothing to install. See the SmartScreen note below — it is unsigned. |
+| **Windows** (x64) | `LangTrainer-1.0.0-windows-x64.exe` | Single file, nothing to install. **Rename it to `LangTrainer.exe`** so in-app updates work — see below. SmartScreen will warn; it is unsigned. |
 | **Linux** (x64) | `LangTrainer-1.0.0-linux-x86_64.tar.gz` | Extract, then `chmod +x LangTrainer-1.0.0-linux-x86_64` before running. |
 | **macOS** (Apple Silicon) | `LangTrainer-1.0.0-macos-arm64.tar.gz` | Extract, then right-click `LangTrainer.app` → **Open**. Intel Macs are not supported in v1. |
 | Any | `LangTrainer-1.0.0-checksums.txt` | SHA-256 of every file above, for manual verification. |
+
+> **Windows: rename the download to `LangTrainer.exe`.** The updater identifies your app by
+> that exact name. Run it under the versioned download name and the first self-update installs
+> `LangTrainer.exe` beside it, leaving a stale duplicate behind. Renaming once avoids this.
+> (The `NO_AUTOUPDATE` opt-out file has the same name dependency — it must sit next to the exe.)
 
 > **No Linux AppImage in v1.** The app is packaged as a plain executable because the
 > application stores its database, dictionaries and logs *next to the executable*, and an
