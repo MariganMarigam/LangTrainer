@@ -44,7 +44,9 @@ die() {
 
 
 usage() {
-    sed -n '3,16p' "$0" | sed 's/^# \{0,1\}//'
+    # Print the leading comment block (line 2 up to the first empty line) so the
+    # help text can never drift out of sync with the header above it.
+    sed -n '2,/^$/p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 
