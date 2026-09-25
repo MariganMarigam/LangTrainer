@@ -60,6 +60,15 @@ it appears in your tray/notification area.
 anything older, use the `tar.gz` instead: it has the same glibc requirement as the
 AppImage, so on a very old distribution neither will run and you need a newer system.
 
+The image carries Python, PySide6 and Qt — all of LangTrainer's own weight. It takes
+the windowing libraries (X11, OpenGL, fontconfig) from your system, the same way any
+Linux program does. Every desktop distribution already has them. If you are on a
+stripped-down system and it exits immediately with
+`ImportError: libEGL.so.1: cannot open shared object file`, install them with your
+package manager — Debian/Ubuntu: `sudo apt install libegl1 libgl1 libxkbcommon0
+libdbus-1-3 libfontconfig1`; Fedora: `sudo dnf install mesa-libEGL mesa-libGL
+libxkbcommon dbus-libs fontconfig`.
+
 > `chmod +x` is required every time you download a fresh copy — browsers do not keep
 > the executable bit, and neither does the GitHub Releases page.
 

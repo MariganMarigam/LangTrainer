@@ -209,14 +209,78 @@ jobs:
       - name: Build (onedir, the AppImage payload)
         run: python build.py --onedir
 
-      - name: Install AppImage build and FUSE tools
+      # The `ubuntu-latest` image ships NO graphics stack at all: no libEGL, no
+      # libGL, no X11, no fontconfig, no GTK. Qt6's libQt6Gui.so.6 links all of
+      # them, so the app dies at `from PySide6.QtGui import ...` with
+      #   ImportError: libEGL.so.1: cannot open shared object file
+      # before it can create a single file. Any real desktop has these; the
+      # runner does not. Installing them here is a TEST-ENVIRONMENT fix, not a
+      # packaging one: the image bundles the app's own code (Python, PySide6,
+      # Qt) and deliberately leaves the host's C/C++ stack to the host, because
+      # shipping a pinned libssl/libsystemd/glibc inside a distributed artifact
+      # is how AppImages break on someone else's machine.
+      - name: Install build, FUSE and Qt platform packages
+        shell: bash
         run: |
           set -euo pipefail
+          WANTED=(
+            # mksquashfs builds the image; libfuse2 provides `fusermount`, which
+            # the type-2 runtime calls to mount itself.
+            squashfs-tools libfuse2
+            # The Qt6/X11/font stack libQt6Gui.so.6 links against. Derived from
+            # the real ldd closure of the build output, then reduced to the
+            # seeds of that closure, so this is evidence rather than folklore.
+            libgtk-3-0t64 libegl1 libgl1 libgbm1 libxkbcommon-x11-0
+            libdbus-1-3 libfontconfig1 libcairo-gobject2 libgdk-pixbuf-2.0-0
+            libepoxy0 libdrm2 libx11-xcb1 libxcb-cursor0 libx11-6 libxau6
+            libxdmcp6 libpixman-1-0 libsqlite3-0 libxcb-icccm4
+            libxcb-keysyms1 libxcb-shape0
+            # Qt needs at least one font; the runner image has none but an
+            # emoji font. Without this the smoke test depends on font luck.
+            fonts-dejavu-core
+          )
+          # Only install names this distro actually has. Ubuntu renames these
+          # between releases (t64 suffixes) and `ubuntu-latest` moves to Ubuntu
+          # 26 in Nov 2026, so a rename must not fail the whole job here. The
+          # closure check in the next step reports precisely what is still
+          # missing, so a rename fails loudly instead of mysteriously.
+          AVAIL=()
+          for p in "${WANTED[@]}"; do
+            if apt-cache show "$p" >/dev/null 2>&1; then AVAIL+=("$p"); fi
+          done
+          echo "installing ${#AVAIL[@]}/${#WANTED[@]} packages"
+          MISSING_PKG=()
+          for p in "${WANTED[@]}"; do
+            if ! printf '%s\n' "${AVAIL[@]}" | grep -qx -- "$p"; then
+              MISSING_PKG+=("$p")
+            fi
+          done
+          if [ "${#MISSING_PKG[@]}" -gt 0 ]; then
+            echo "::warning::not in this distro's archive: ${MISSING_PKG[*]}"
+          fi
           sudo apt-get update
-          # mksquashfs builds the image; libfuse2 provides `fusermount`, which the
-          # type-2 runtime calls to mount itself. Both are installed explicitly
-          # rather than assumed to be on the runner image.
-          sudo apt-get install -y --no-install-recommends squashfs-tools libfuse2
+          sudo apt-get install -y --no-install-recommends "${AVAIL[@]}"
+
+      # If the list above ever drifts out of sync with the runner image, fail
+      # HERE with the exact sonames still unresolved, instead of letting the app
+      # die two minutes later with one opaque ImportError.
+      - name: Check every bundled library resolves
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/unresolved.txt
+          while IFS= read -r so; do
+            ldd "$so" 2>/dev/null | grep 'not found' >> /tmp/unresolved.txt || true
+          done < <(find dist/LangTrainer_onedir -name '*.so*' -type f)
+          sort -u -o /tmp/unresolved.txt /tmp/unresolved.txt
+          if [ -s /tmp/unresolved.txt ]; then
+            echo "::error::Unresolved shared libraries in the build:"
+            while read -r m; do
+              [ -n "$m" ] && echo "::error::  $m"
+            done < /tmp/unresolved.txt
+            exit 1
+          fi
+          echo "OK: every bundled library resolves"
 
       - name: Assemble the AppDir
         shell: bash
@@ -361,6 +425,26 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "Resolved VERSION=$VERSION"
+
+      # The install/uninstall scripts ship as release assets so that installing
+      # from the menu never requires cloning the repository. They are copied
+      # from the checkout rather than from a build artifact, so the published
+      # scripts are byte-for-byte the committed ones.
+      - uses: actions/checkout@v7
+
+      - name: Stage the install scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          for s in install.sh uninstall.sh; do
+            if [ ! -f "$s" ]; then
+              echo "::error::$s is missing from the checkout"
+              exit 1
+            fi
+            cp -f "$s" "release-assets/$s"
+            chmod 755 "release-assets/$s"
+          done
+          ls -l release-assets/install.sh release-assets/uninstall.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v8
