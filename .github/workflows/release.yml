@@ -368,10 +368,27 @@ jobs:
             timeout --signal=KILL 180 "$PWD/$ASSET" > appimage-run.log 2>&1 &
           APP_PID=$!
 
+          CRASH_LOG="${SCRATCH}/.local/share/LangTrainer/logs/langtrainer-crash.log"
+
           for _ in $(seq 1 60); do
             if [ -d "$DATA_DIR" ]; then break; fi
             sleep 2
           done
+
+          # _bootstrap() creates the data dir before app.exec() even starts, so
+          # the first successful poll lands while the app is still warming up.
+          # The one-shot timers at main.py:477/485 fire 1500 ms and 2500 ms
+          # after the event loop begins, and the update check can spend up to
+          # 8 s on the network, so a defect on that path is invisible to a
+          # check that judges the app the instant its database appears. Give
+          # the app time to settle, bailing out early if it crashes. Without
+          # this the gate is a race: pass or fail depending on runner speed.
+          if [ -d "$DATA_DIR" ]; then
+            for _ in $(seq 1 15); do
+              if [ -f "$CRASH_LOG" ]; then break; fi
+              sleep 2
+            done
+          fi
 
           # Stop the app and the runtime that mounted the image. `set -e` is off
           # in this step so a vanished process cannot abort it.
@@ -392,10 +409,16 @@ jobs:
             echo "::error::$DATA_DIR exists but lang_trainer.db is missing — the app started without a database."
             exit 1
           fi
-          if [ ! -f "${SCRATCH}/.local/share/LangTrainer/logs/langtrainer-crash.log" ]; then
-            echo "::note::No crash log — the app started cleanly."
+          # A crash log means the app started, created its data and then fell
+          # over on a path a real user hits on every launch. v1.0.0 through
+          # v1.0.2 all shipped a NameError in the auto-update timer that this
+          # used to merely note, so make it fatal.
+          if [ -f "$CRASH_LOG" ]; then
+            echo "::error::The AppImage logged a crash on start-up:"
+            cat "$CRASH_LOG"
+            exit 1
           fi
-          echo "OK: the AppImage created $DATA_DIR"
+          echo "OK: the AppImage created $DATA_DIR and logged no crash"
 
       # archive:false + a pre-chmod'ed file, for the same reason the Linux
       # onefile is tarred: upload-artifact v4+ does not round-trip the exec bit.
