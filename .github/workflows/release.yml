@@ -478,7 +478,18 @@ jobs:
             cp -f "$s" "release-assets/$s"
             chmod 755 "release-assets/$s"
           done
-          ls -l release-assets/install.sh release-assets/uninstall.sh
+          # The icon ships FLAT, beside install.sh, because find_icon() looks for
+          # $SCRIPT_DIR/langtrainer.png and a release download drops every asset
+          # into one folder. Without it a user who installs from the menu gets a
+          # generic icon and is told to point LANGTRAINER_ICON at a file they were
+          # never sent. Copy it out of its repo subdirectory so the second
+          # find_icon candidate is the one that matches.
+          if [ ! -f assets/icons/langtrainer.png ]; then
+            echo "::error::assets/icons/langtrainer.png is missing from the checkout"
+            exit 1
+          fi
+          cp -f assets/icons/langtrainer.png release-assets/langtrainer.png
+          ls -l release-assets/install.sh release-assets/uninstall.sh release-assets/langtrainer.png
 
       # upload-artifact does not round-trip POSIX permissions, so the AppImage
       # can arrive here without its exec bit. Restore it before publishing:
