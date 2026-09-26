@@ -103,7 +103,7 @@ case "${1:-}" in
         ;;
 esac
 
-SOURCE=$(find_appimage "$@") || die "no AppImage found. Pass one as an argument, e.g. ./install.sh LangTrainer-1.0.2-linux-x86_64.AppImage" 1
+SOURCE=$(find_appimage "$@") || die "no AppImage found. Pass one as an argument, e.g. ./install.sh LangTrainer-<version>-linux-x86_64.AppImage" 1
 [ -f "$SOURCE" ] || die "not a file: $SOURCE" 1
 
 printf 'Installing %s\n' "$SOURCE"
